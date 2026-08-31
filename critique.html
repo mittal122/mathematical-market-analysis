@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assumptions &amp; Critique — BSM Quant Desk</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">Σ</span>
+    <div class="brand-text">
+      <h1>BSM Quant Desk</h1>
+      <p>Black-Scholes-Merton Framework, Application &amp; Risk Architecture</p>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <a class="tab-btn" data-page="overview" href="index.html">Overview</a>
+    <a class="tab-btn" data-page="calculator" href="calculator.html">Calculator</a>
+    <a class="tab-btn" data-page="greeks" href="greeks.html">Greeks &amp; Sensitivity</a>
+    <a class="tab-btn" data-page="heatmap" href="heatmap.html">Delta Heat Map</a>
+    <a class="tab-btn" data-page="math" href="math.html">Mathematical Framework</a>
+    <a class="tab-btn" data-page="critique" href="critique.html">Assumptions &amp; Critique</a>
+    <a class="tab-btn" data-page="strategy" href="strategy.html">Strategies &amp; Risk</a>
+    <a class="tab-btn" data-page="verdict" href="verdict.html">SWOT &amp; Verdict</a>
+  </nav>
+</header>
+
+<main>
+<section class="page">
+  <h2>Critical Validation of Model Assumptions</h2>
+  <p class="lede">Model sophistication is dangerous without an acute awareness of failure modes. BSM's
+  "elegant" assumptions frequently fracture under market stress.</p>
+
+  <div class="card-grid">
+    <div class="card warn-card">
+      <h3>Volatility Smile</h3>
+      <p>BSM assumes constant σ. The existence of the volatility smile — higher implied volatility for
+      OTM puts/calls — proves the model is fundamentally misspecified. Traders use Implied Volatility as
+      a <em>plug-figure</em>, forcing the model to match market prices rather than forecasting true
+      future volatility.</p>
+    </div>
+    <div class="card warn-card">
+      <h3>Fat Tails (Leptokurtosis)</h3>
+      <p>BSM assumes log-normal returns. Real markets exhibit fat tails — extreme moves occur far more
+      often than the model predicts — leading to systematic underpricing of tail risk.</p>
+    </div>
+    <div class="card warn-card">
+      <h3>Pin Risk</h3>
+      <p>BSM assumes a frictionless market. As T → 0 and S → K, Gamma explodes toward infinity, making
+      the Delta position hypersensitive and continuous-hedging transaction costs prohibitive.</p>
+    </div>
+    <div class="card warn-card">
+      <h3>Liquidity Black Holes</h3>
+      <p>BSM assumes continuous hedging is always possible. During a crash, price gaps make continuous
+      rebalancing impossible — causing catastrophic slippage and total breakdown of the Delta-neutral
+      stance.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Live Volatility Smile Explorer</h3>
+    <p>Illustrative smile curve, built around the σ saved on the <a href="calculator.html">Calculator</a>
+    page (<span id="param-summary">—</span>): implied volatility rises for strikes further from the
+    current spot, contradicting BSM's flat-σ assumption.</p>
+    <div class="chart-box"><canvas id="smileChart"></canvas></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <p>BSM Quant Desk — a self-contained reference &amp; calculator for the Black-Scholes-Merton framework.
+  All computation runs client-side in JavaScript; no data leaves the browser.</p>
+</footer>
+
+<script src="js/bsm-core.js"></script>
+<script>
+initNav('critique');
+initChartDefaults();
+
+const inp = getBsmState();
+document.getElementById('param-summary').textContent = `K=${inp.K}, σ=${inp.sigma}`;
+
+const strikes = spotRange(inp.K, 25);
+const baseVol = inp.sigma;
+const ivs = strikes.map(k => {
+  const moneyness = Math.log(k / inp.K);
+  return (baseVol + 0.6 * baseVol * moneyness * moneyness) * 100;
+});
+const flat = strikes.map(() => baseVol * 100);
+
+const ctx = document.getElementById('smileChart').getContext('2d');
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: strikes.map(k => k.toFixed(0)),
+    datasets: [
+      { label: 'Observed Implied Volatility (illustrative smile)', data: ivs, borderColor: CHART_COLORS.warn, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: .35 },
+      { label: 'BSM Assumption: Flat σ', data: flat, borderColor: CHART_COLORS.accent2, borderDash: [6, 4], backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0 }
+    ]
+  },
+  options: baseLineOptions('Implied Volatility (%)')
+});
+</script>
+</body>
+</html>

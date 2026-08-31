@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delta Heat Map — BSM Quant Desk</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">Σ</span>
+    <div class="brand-text">
+      <h1>BSM Quant Desk</h1>
+      <p>Black-Scholes-Merton Framework, Application &amp; Risk Architecture</p>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <a class="tab-btn" data-page="overview" href="index.html">Overview</a>
+    <a class="tab-btn" data-page="calculator" href="calculator.html">Calculator</a>
+    <a class="tab-btn" data-page="greeks" href="greeks.html">Greeks &amp; Sensitivity</a>
+    <a class="tab-btn" data-page="heatmap" href="heatmap.html">Delta Heat Map</a>
+    <a class="tab-btn" data-page="math" href="math.html">Mathematical Framework</a>
+    <a class="tab-btn" data-page="critique" href="critique.html">Assumptions &amp; Critique</a>
+    <a class="tab-btn" data-page="strategy" href="strategy.html">Strategies &amp; Risk</a>
+    <a class="tab-btn" data-page="verdict" href="verdict.html">SWOT &amp; Verdict</a>
+  </nav>
+</header>
+
+<main>
+<section class="page">
+  <h2>Delta Heat Map — Strike × Time Probability Density</h2>
+  <p class="lede">Unlike a static payoff diagram at expiry, this grid visualizes the probability
+  density of the option finishing in-the-money (N(d₂)) and the Delta (N(d₁)) across a range of strikes
+  and time-to-expiry, using the spot/vol/rate inputs saved on the <a href="calculator.html">Calculator</a>
+  page (<span id="param-summary">—</span>) — the tool a Lead Strategist uses to spot where a portfolio
+  is most exposed to rapid Delta shifts.</p>
+
+  <div class="panel">
+    <div class="field-row">
+      <div class="field"><label for="hm-metric">Metric</label>
+        <select id="hm-metric">
+          <option value="delta" selected>Delta (Hedge Ratio)</option>
+          <option value="itm">ITM Probability, N(d₂)</option>
+          <option value="gamma">Gamma (Convexity)</option>
+        </select>
+      </div>
+    </div>
+    <div id="heatmap-grid" class="heatmap-grid"></div>
+    <div class="legend">
+      <span>Low</span><div class="legend-bar"></div><span>High</span>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <p>BSM Quant Desk — a self-contained reference &amp; calculator for the Black-Scholes-Merton framework.
+  All computation runs client-side in JavaScript; no data leaves the browser.</p>
+</footer>
+
+<script src="js/bsm-core.js"></script>
+<script>
+initNav('heatmap');
+
+const $ = (id) => document.getElementById(id);
+const inp = getBsmState();
+$('param-summary').textContent =
+  `${inp.type.toUpperCase()} · S=${inp.S} K=${inp.K} σ=${inp.sigma} r=${inp.r} q=${inp.q}`;
+
+function updateHeatmap() {
+  const metric = $('hm-metric').value;
+  const strikePcts = [0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15];
+  const times = [0.02, 0.08, 0.17, 0.25, 0.5, 0.75, 1.0];
+
+  const values = [];
+  let min = Infinity, max = -Infinity;
+
+  times.forEach(T => {
+    strikePcts.forEach(pct => {
+      const K = inp.S * pct;
+      let v;
+      if (metric === 'delta') {
+        v = bsmGreeks(inp.S, K, T, inp.sigma, inp.r, inp.q, inp.type).delta;
+      } else if (metric === 'itm') {
+        const { Nd2 } = bsmPrice(inp.S, K, T, inp.sigma, inp.r, inp.q, inp.type);
+        v = inp.type === 'call' ? Nd2 : 1 - Nd2;
+      } else {
+        v = bsmGreeks(inp.S, K, T, inp.sigma, inp.r, inp.q, inp.type).gamma;
+      }
+      values.push(v);
+      min = Math.min(min, v);
+      max = Math.max(max, v);
+    });
+  });
+
+  const grid = $('heatmap-grid');
+  grid.style.gridTemplateColumns = `70px repeat(${strikePcts.length}, 1fr)`;
+  grid.innerHTML = '';
+
+  grid.appendChild(el('div', 'hm-col-label', 'T \\ K'));
+  strikePcts.forEach(pct => grid.appendChild(el('div', 'hm-col-label', (pct * 100).toFixed(0) + '%')));
+
+  let idx = 0;
+  times.forEach(T => {
+    grid.appendChild(el('div', 'hm-row-label', T < 1 ? (T * 12).toFixed(1) + 'm' : T.toFixed(2) + 'y'));
+    strikePcts.forEach(() => {
+      const v = values[idx++];
+      const cell = el('div', 'hm-cell', metric === 'gamma' ? v.toFixed(4) : v.toFixed(2));
+      cell.style.background = heatColor(v, min, max);
+      cell.title = `${metric}: ${v.toFixed(4)}`;
+      grid.appendChild(cell);
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  $('hm-metric').addEventListener('change', updateHeatmap);
+  updateHeatmap();
+});
+</script>
+</body>
+</html>

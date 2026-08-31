@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mathematical Framework — BSM Quant Desk</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">Σ</span>
+    <div class="brand-text">
+      <h1>BSM Quant Desk</h1>
+      <p>Black-Scholes-Merton Framework, Application &amp; Risk Architecture</p>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <a class="tab-btn" data-page="overview" href="index.html">Overview</a>
+    <a class="tab-btn" data-page="calculator" href="calculator.html">Calculator</a>
+    <a class="tab-btn" data-page="greeks" href="greeks.html">Greeks &amp; Sensitivity</a>
+    <a class="tab-btn" data-page="heatmap" href="heatmap.html">Delta Heat Map</a>
+    <a class="tab-btn" data-page="math" href="math.html">Mathematical Framework</a>
+    <a class="tab-btn" data-page="critique" href="critique.html">Assumptions &amp; Critique</a>
+    <a class="tab-btn" data-page="strategy" href="strategy.html">Strategies &amp; Risk</a>
+    <a class="tab-btn" data-page="verdict" href="verdict.html">SWOT &amp; Verdict</a>
+  </nav>
+</header>
+
+<main>
+<section class="page">
+  <h2>Parameter Extraction &amp; the Governing PDE</h2>
+
+  <div class="panel">
+    <h3>The Black-Scholes-Merton PDE</h3>
+    <div class="equation">
+      ∂V/∂t &nbsp;+&nbsp; ½σ²S² ∂²V/∂S² &nbsp;+&nbsp; (r − q)S ∂V/∂S &nbsp;−&nbsp; rV &nbsp;=&nbsp; 0
+    </div>
+    <ul class="term-list">
+      <li><strong>∂V/∂t</strong> — Theta, time decay.</li>
+      <li><strong>½σ²S² ∂²V/∂S²</strong> — the Gamma / convexity term: the "cost" of hedging.</li>
+      <li><strong>(r − q)S ∂V/∂S</strong> — the drift / cost-of-carry adjustment.</li>
+      <li><strong>−rV</strong> — discounting of the option value.</li>
+    </ul>
+  </div>
+
+  <div class="panel">
+    <h3>Closed-Form Solution</h3>
+    <div class="equation">C = S e<sup>−qT</sup> N(d₁) − K e<sup>−rT</sup> N(d₂)</div>
+    <div class="equation">P = K e<sup>−rT</sup> N(−d₂) − S e<sup>−qT</sup> N(−d₁)</div>
+    <div class="equation">d₁ = [ ln(S/K) + (r − q + σ²/2)T ] / (σ√T)</div>
+    <div class="equation">d₂ = d₁ − σ√T</div>
+    <p><strong>N(d₁)</strong> is the Hedge Ratio (Delta) — the exact quantity of the underlying required
+    for risk-neutral replication. <strong>N(d₂)</strong> is the risk-neutral probability that the option
+    expires in-the-money under the ℚ-measure.</p>
+  </div>
+
+  <div class="panel">
+    <h3>First Principles: GBM, Itô's Lemma &amp; Replication</h3>
+    <div class="equation">dS = μS dt + σS dW</div>
+    <p>The underlying follows Geometric Brownian Motion, where <em>dW</em> is a Wiener process representing
+    market noise. <strong>Itô's Lemma</strong> is the bridge between this stochastic process and the
+    deterministic option price — it maps the randomness of the stock onto the option's value.</p>
+    <p>The <strong>Replication Argument</strong>: by maintaining a Delta-neutral portfolio (short the option,
+    long Δ shares), a trader eliminates the <em>dW</em> term. This self-financing, riskless portfolio must
+    earn the risk-free rate <em>r</em> to preclude arbitrage — justifying <strong>Risk-Neutral Valuation</strong>:
+    price the option as if the world were risk-neutral, regardless of actual investor risk appetite.</p>
+  </div>
+
+  <div class="panel">
+    <h3>Numerical Approximation for N(x) — Abramowitz &amp; Stegun</h3>
+    <p>Since N(x) has no closed-form integral, this site (and most production pricing engines) uses the
+    high-precision polynomial approximation:</p>
+    <div class="equation">N(x) ≈ 1 − φ(x)(a₁k + a₂k² + a₃k³ + a₄k⁴ + a₅k⁵), &nbsp; x ≥ 0</div>
+    <div class="equation">k = 1 / (1 + 0.2316419x), &nbsp; φ(x) = (1/√2π) e<sup>−x²/2</sup></div>
+    <p class="constants">a₁=0.31938&nbsp; a₂=−0.35656&nbsp; a₃=1.78147&nbsp; a₄=−1.82125&nbsp; a₅=1.33027</p>
+  </div>
+
+  <div class="panel">
+    <h3>Algorithmic Workflow</h3>
+    <ol class="steps">
+      <li>Ingest real-time feeds for S, K, T, σ, r, q.</li>
+      <li>Calculate intermediate nodes d₁ and d₂.</li>
+      <li>Approximate N(x) via the Abramowitz &amp; Stegun polynomial.</li>
+      <li>Solve the closed-form Call/Put equations.</li>
+      <li>Compute the Greek matrix for real-time risk monitoring.</li>
+    </ol>
+    <p class="warn">Data Integrity Mandate: stale volatility or rate data creates model risk. In
+    high-frequency environments, a 1-basis-point error in <em>r</em> or a 1% lag in <em>σ</em> can
+    invalidate an entire Delta hedge.</p>
+  </div>
+</section>
+</main>
+
+<footer>
+  <p>BSM Quant Desk — a self-contained reference &amp; calculator for the Black-Scholes-Merton framework.
+  All computation runs client-side in JavaScript; no data leaves the browser.</p>
+</footer>
+
+<script src="js/bsm-core.js"></script>
+<script>initNav('math');</script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strategies &amp; Risk — BSM Quant Desk</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">Σ</span>
+    <div class="brand-text">
+      <h1>BSM Quant Desk</h1>
+      <p>Black-Scholes-Merton Framework, Application &amp; Risk Architecture</p>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <a class="tab-btn" data-page="overview" href="index.html">Overview</a>
+    <a class="tab-btn" data-page="calculator" href="calculator.html">Calculator</a>
+    <a class="tab-btn" data-page="greeks" href="greeks.html">Greeks &amp; Sensitivity</a>
+    <a class="tab-btn" data-page="heatmap" href="heatmap.html">Delta Heat Map</a>
+    <a class="tab-btn" data-page="math" href="math.html">Mathematical Framework</a>
+    <a class="tab-btn" data-page="critique" href="critique.html">Assumptions &amp; Critique</a>
+    <a class="tab-btn" data-page="strategy" href="strategy.html">Strategies &amp; Risk</a>
+    <a class="tab-btn" data-page="verdict" href="verdict.html">SWOT &amp; Verdict</a>
+  </nav>
+</header>
+
+<main>
+<section class="page">
+  <h2>Quantitative Trading Strategies &amp; Failure Modes</h2>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>Volatility Arbitrage</h3>
+      <p>Trading the spread between Implied Volatility (model input) and Realized Volatility (actual
+      market movement).</p>
+    </div>
+    <div class="card">
+      <h3>Delta-Neutral Hedging</h3>
+      <p>Maintaining Δ = 0 to isolate profits from Gamma (scalping) or Theta (selling time).</p>
+    </div>
+    <div class="card">
+      <h3>Beyond BSM</h3>
+      <p>Advanced desks employ Stochastic Volatility models (Heston, SABR) for the volatility smile,
+      and Monte Carlo simulation for path-dependent structures closed-form solutions can't reach.</p>
+    </div>
+    <div class="card warn-card">
+      <h3>Systemic Risk</h3>
+      <p>These strategies are vulnerable to "Liquidity Black Holes" — during a crash, hedging gaps
+      produce slippage that BSM's frictionless-market assumption cannot anticipate.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <p>BSM Quant Desk — a self-contained reference &amp; calculator for the Black-Scholes-Merton framework.
+  All computation runs client-side in JavaScript; no data leaves the browser.</p>
+</footer>
+
+<script src="js/bsm-core.js"></script>
+<script>initNav('strategy');</script>
+</body>
+</html>

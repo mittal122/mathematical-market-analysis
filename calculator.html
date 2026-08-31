@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculator — BSM Quant Desk</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">Σ</span>
+    <div class="brand-text">
+      <h1>BSM Quant Desk</h1>
+      <p>Black-Scholes-Merton Framework, Application &amp; Risk Architecture</p>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <a class="tab-btn" data-page="overview" href="index.html">Overview</a>
+    <a class="tab-btn" data-page="calculator" href="calculator.html">Calculator</a>
+    <a class="tab-btn" data-page="greeks" href="greeks.html">Greeks &amp; Sensitivity</a>
+    <a class="tab-btn" data-page="heatmap" href="heatmap.html">Delta Heat Map</a>
+    <a class="tab-btn" data-page="math" href="math.html">Mathematical Framework</a>
+    <a class="tab-btn" data-page="critique" href="critique.html">Assumptions &amp; Critique</a>
+    <a class="tab-btn" data-page="strategy" href="strategy.html">Strategies &amp; Risk</a>
+    <a class="tab-btn" data-page="verdict" href="verdict.html">SWOT &amp; Verdict</a>
+  </nav>
+</header>
+
+<main>
+<section class="page">
+  <h2>Live Pricing Engine</h2>
+  <p class="lede">Enter the six BSM inputs. Values default to the report's index-option case study
+  (S=2000, K=1900, T=0.25, σ=0.25, r=0.05, q=0.02) — the closed-form solution below computes the
+  precise fair value live: ≈ 163.60, not the 177.42 figure the source write-up quoted. Always verify
+  a "fair value" against the actual formula rather than trusting a quoted number. These inputs are
+  saved to your browser and reused on the Greeks, Heat Map, and Critique pages.</p>
+
+  <div class="calc-grid">
+    <div class="panel inputs">
+      <h3>Inputs</h3>
+      <div class="field">
+        <label for="opt-type">Option Type</label>
+        <select id="opt-type">
+          <option value="call">Call</option>
+          <option value="put">Put</option>
+        </select>
+      </div>
+      <div class="field"><label for="S">Spot Price (S)</label><input type="number" id="S" step="1"></div>
+      <div class="field"><label for="K">Strike Price (K)</label><input type="number" id="K" step="1"></div>
+      <div class="field"><label for="T">Time to Expiry, years (T)</label><input type="number" id="T" step="0.01"></div>
+      <div class="field"><label for="sigma">Volatility, σ (e.g. 0.25 = 25%)</label><input type="number" id="sigma" step="0.01"></div>
+      <div class="field"><label for="r">Risk-free Rate, r</label><input type="number" id="r" step="0.001"></div>
+      <div class="field"><label for="q">Dividend Yield, q</label><input type="number" id="q" step="0.001"></div>
+      <button id="calc-btn" class="primary-btn">Recalculate</button>
+    </div>
+
+    <div class="panel results">
+      <h3>Fair Value &amp; Intermediate Nodes</h3>
+      <div class="result-hero">
+        <span class="result-label" id="price-label">Call Price</span>
+        <span class="result-value" id="price-out">—</span>
+      </div>
+      <div class="node-grid">
+        <div class="node"><span>d₁</span><strong id="d1-out">—</strong></div>
+        <div class="node"><span>d₂</span><strong id="d2-out">—</strong></div>
+        <div class="node"><span>N(d₁)</span><strong id="nd1-out">—</strong></div>
+        <div class="node"><span>N(d₂)</span><strong id="nd2-out">—</strong></div>
+      </div>
+
+      <h3>Greek Matrix</h3>
+      <div class="greek-grid">
+        <div class="greek"><span>Delta (Δ)</span><strong id="g-delta">—</strong></div>
+        <div class="greek"><span>Gamma (Γ)</span><strong id="g-gamma">—</strong></div>
+        <div class="greek"><span>Vega (ν) / 1%</span><strong id="g-vega">—</strong></div>
+        <div class="greek"><span>Theta (Θ) / day</span><strong id="g-theta">—</strong></div>
+        <div class="greek"><span>Rho (ρ) / 1%</span><strong id="g-rho">—</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Payoff at Expiry vs. Current Fair Value</h3>
+    <div class="chart-box"><canvas id="payoffChart"></canvas></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <p>BSM Quant Desk — a self-contained reference &amp; calculator for the Black-Scholes-Merton framework.
+  All computation runs client-side in JavaScript; no data leaves the browser.</p>
+</footer>
+
+<script src="js/bsm-core.js"></script>
+<script>
+initNav('calculator');
+initChartDefaults();
+
+let payoffChart;
+
+function readInputs() {
+  return {
+    type: $('opt-type').value,
+    S: parseFloat($('S').value),
+    K: parseFloat($('K').value),
+    T: parseFloat($('T').value),
+    sigma: parseFloat($('sigma').value),
+    r: parseFloat($('r').value),
+    q: parseFloat($('q').value),
+  };
+}
+const $ = (id) => document.getElementById(id);
+
+function populateFromState() {
+  const s = getBsmState();
+  $('opt-type').value = s.type;
+  $('S').value = s.S;
+  $('K').value = s.K;
+  $('T').value = s.T;
+  $('sigma').value = s.sigma;
+  $('r').value = s.r;
+  $('q').value = s.q;
+}
+
+function recalculate() {
+  const inp = readInputs();
+  if (!inp.S || !inp.K || !inp.T || !inp.sigma) return;
+  setBsmState(inp);
+
+  const { price, d1, d2, Nd1, Nd2 } = bsmPrice(inp.S, inp.K, inp.T, inp.sigma, inp.r, inp.q, inp.type);
+  const greeks = bsmGreeks(inp.S, inp.K, inp.T, inp.sigma, inp.r, inp.q, inp.type);
+
+  $('price-label').textContent = (inp.type === 'call' ? 'Call' : 'Put') + ' Price';
+  $('price-out').textContent = fmt(price, 2);
+  $('d1-out').textContent = fmt(d1);
+  $('d2-out').textContent = fmt(d2);
+  $('nd1-out').textContent = fmt(Nd1);
+  $('nd2-out').textContent = fmt(Nd2);
+
+  $('g-delta').textContent = fmt(greeks.delta, 4);
+  $('g-gamma').textContent = fmt(greeks.gamma, 5);
+  $('g-vega').textContent = fmt(greeks.vega, 4);
+  $('g-theta').textContent = fmt(greeks.theta, 4);
+  $('g-rho').textContent = fmt(greeks.rho, 4);
+
+  updatePayoffChart(inp);
+}
+
+function updatePayoffChart(inp) {
+  const spots = spotRange(inp.K, 81);
+  const payoff = spots.map(s => inp.type === 'call' ? Math.max(s - inp.K, 0) : Math.max(inp.K - s, 0));
+  const fairValue = spots.map(s => bsmPrice(s, inp.K, inp.T, inp.sigma, inp.r, inp.q, inp.type).price);
+
+  const ctx = $('payoffChart').getContext('2d');
+  const data = {
+    labels: spots.map(s => s.toFixed(0)),
+    datasets: [
+      { label: 'Intrinsic Value at Expiry', data: payoff, borderColor: CHART_COLORS.warn, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0 },
+      { label: 'Current BSM Fair Value', data: fairValue, borderColor: CHART_COLORS.accent, backgroundColor: 'rgba(63,208,201,0.08)', fill: true, borderWidth: 2, pointRadius: 0, tension: .25 }
+    ]
+  };
+  if (payoffChart) { payoffChart.data = data; payoffChart.update(); }
+  else payoffChart = new Chart(ctx, { type: 'line', data, options: baseLineOptions('Option Value') });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  populateFromState();
+  $('calc-btn').addEventListener('click', recalculate);
+  ['opt-type', 'S', 'K', 'T', 'sigma', 'r', 'q'].forEach(id => $(id).addEventListener('change', recalculate));
+  recalculate();
+});
+</script>
+</body>
+</html>
