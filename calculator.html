@@ -207,7 +207,7 @@ async function runSearch(query) {
     matches.forEach(m => {
       const row = el('div', 'search-result-row',
         `${m.symbol} — ${m.instrument_name} (${m.exchange || m.country || ''})`);
-      row.addEventListener('click', () => loadStock(m.symbol));
+      row.addEventListener('click', () => loadStock(m.symbol, m.instrument_name));
       box.appendChild(row);
     });
     box.hidden = false;
@@ -217,7 +217,7 @@ async function runSearch(query) {
   }
 }
 
-async function loadStock(symbol) {
+async function loadStock(symbol, displayName, isFallback = false) {
   $('search-results').hidden = true;
   $('stock-search').value = symbol;
   $('load-status').textContent = `Loading ${symbol}…`;
@@ -237,9 +237,17 @@ async function loadStock(symbol) {
     $('q').value = settings.defaultDividendYield;
     recalculate();
 
-    $('load-status').textContent = `✓ Loaded ${symbol} — spot ${fmt(S, 2)}, historical σ ${(sigma * 100).toFixed(2)}%`;
+    const fallbackNote = isFallback ? ` (US ADR — original symbol needs a paid Twelve Data plan)` : '';
+    $('load-status').textContent = `✓ Loaded ${symbol}${fallbackNote} — spot ${fmt(S, 2)}, historical σ ${(sigma * 100).toFixed(2)}%`;
     $('load-status').className = 'test-result ok';
   } catch (e) {
+    if (e.code === 'plan-restricted' && !isFallback) {
+      const fallback = findAdrFallback(displayName || symbol);
+      if (fallback) {
+        $('load-status').textContent = `${symbol} needs a paid plan — trying its US ADR (${fallback.label})…`;
+        return loadStock(fallback.adr, fallback.label, true);
+      }
+    }
     $('load-status').textContent = `✗ ${e.message}`;
     $('load-status').className = 'test-result fail';
   }

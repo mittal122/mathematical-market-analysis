@@ -52,6 +52,8 @@
     <div id="load-status" class="test-result"></div>
   </div>
 
+  <div id="adr-note" class="panel warn-banner" hidden></div>
+
   <div id="insights-body" hidden>
     <div class="panel">
       <div class="stock-header">
@@ -149,7 +151,7 @@ async function runSearch(query) {
     matches.forEach(m => {
       const row = el('div', 'search-result-row',
         `${m.symbol} — ${m.instrument_name} (${m.exchange || m.country || ''})`);
-      row.addEventListener('click', () => loadStock(m.symbol));
+      row.addEventListener('click', () => loadStock(m.symbol, m.instrument_name));
       box.appendChild(row);
     });
     box.hidden = false;
@@ -159,12 +161,13 @@ async function runSearch(query) {
   }
 }
 
-async function loadStock(symbol) {
+async function loadStock(symbol, displayName, isFallback = false) {
   $('search-results').hidden = true;
   $('search-input').value = symbol;
   $('load-status').textContent = `Loading ${symbol}…`;
   $('load-status').className = 'test-result';
   $('insights-body').hidden = true;
+  if (!isFallback) $('adr-note').hidden = true;
 
   try {
     const [quote, history] = await Promise.all([getQuote(symbol), getDailyHistory(symbol, 260)]);
@@ -184,6 +187,17 @@ async function loadStock(symbol) {
     $('load-status').textContent = '';
     $('insights-body').hidden = false;
   } catch (e) {
+    if (e.code === 'plan-restricted' && !isFallback) {
+      const fallback = findAdrFallback(displayName || symbol);
+      if (fallback) {
+        const note = $('adr-note');
+        note.hidden = false;
+        note.innerHTML = `<strong>${symbol} needs a paid Twelve Data plan.</strong>` +
+          `<p>Showing its US-listed ADR instead: <strong>${fallback.label}</strong>. ADR prices track the ` +
+          `home-market shares closely but aren't identical (FX rate and ADR ratio both apply).</p>`;
+        return loadStock(fallback.adr, fallback.label, true);
+      }
+    }
     $('load-status').textContent = `✗ ${e.message}`;
     $('load-status').className = 'test-result fail';
   }

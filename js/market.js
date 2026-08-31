@@ -5,7 +5,7 @@ const TWELVE_DATA_BASE = 'https://api.twelvedata.com';
 class MarketDataError extends Error {
   constructor(message, code) {
     super(message);
-    this.code = code; // 'no-key' | 'rate-limit' | 'not-found' | 'network' | 'api'
+    this.code = code; // 'no-key' | 'rate-limit' | 'not-found' | 'network' | 'api' | 'plan-restricted'
   }
 }
 
@@ -39,6 +39,9 @@ async function td(path, params) {
 
   if (json.status === 'error' || json.code >= 400) {
     if (json.code === 429) throw new MarketDataError('Twelve Data rate limit reached. Wait a minute and try again.', 'rate-limit');
+    if (json.code === 403 && /plan/i.test(json.message || '')) {
+      throw new MarketDataError(json.message || 'This symbol requires a paid Twelve Data plan.', 'plan-restricted');
+    }
     if (json.code === 401 || json.code === 403) throw new MarketDataError('Twelve Data rejected the API key. Check it on the Settings page.', 'no-key');
     throw new MarketDataError(json.message || 'Twelve Data returned an error.', 'api');
   }
@@ -79,6 +82,50 @@ function historicalVolatility(closes, lookbackDays = 60) {
   const mean = logReturns.reduce((a, b) => a + b, 0) / logReturns.length;
   const variance = logReturns.reduce((a, b) => a + (b - mean) ** 2, 0) / (logReturns.length - 1);
   return Math.sqrt(variance) * Math.sqrt(252);
+}
+
+/* ===================== ADR fallback for exchanges Twelve Data's free plan doesn't cover ===================== */
+
+/** Curated, best-effort list — not exhaustive. Twelve Data's free/Basic plan only covers US-listed
+ *  stocks, forex, and crypto; NSE/BSE, LSE, and most other non-US exchanges require a paid plan. Where a
+ *  well-known foreign company also has a US-listed ADR, we offer that as a free substitute. An ADR's price
+ *  tracks the home-market shares closely (adjusted for the ADR ratio and FX) but is not identical to them. */
+const ADR_FALLBACKS = [
+  { keywords: ['tata motors'], adr: 'TTM', label: "Tata Motors Ltd. — NYSE ADR (TTM)" },
+  { keywords: ['infosys'], adr: 'INFY', label: 'Infosys Ltd. — NYSE ADR (INFY)' },
+  { keywords: ['icici bank'], adr: 'IBN', label: 'ICICI Bank Ltd. — NYSE ADR (IBN)' },
+  { keywords: ['hdfc bank'], adr: 'HDB', label: 'HDFC Bank Ltd. — NYSE ADR (HDB)' },
+  { keywords: ['wipro'], adr: 'WIT', label: 'Wipro Ltd. — NYSE ADR (WIT)' },
+  { keywords: ['dr reddy', "dr. reddy"], adr: 'RDY', label: "Dr. Reddy's Laboratories — NYSE ADR (RDY)" },
+  { keywords: ['vedanta', 'sterlite'], adr: 'VEDL', label: 'Vedanta Ltd. — NYSE ADR (VEDL)' },
+  { keywords: ['alibaba'], adr: 'BABA', label: 'Alibaba Group — NYSE ADR (BABA)' },
+  { keywords: ['tencent'], adr: 'TCEHY', label: 'Tencent Holdings — OTC ADR (TCEHY)' },
+  { keywords: ['jd.com', 'jd com'], adr: 'JD', label: 'JD.com — NASDAQ ADR (JD)' },
+  { keywords: ['baidu'], adr: 'BIDU', label: 'Baidu Inc. — NASDAQ ADR (BIDU)' },
+  { keywords: ['nio inc', 'nio limited'], adr: 'NIO', label: 'NIO Inc. — NYSE (NIO)' },
+  { keywords: ['toyota'], adr: 'TM', label: 'Toyota Motor Corp. — NYSE ADR (TM)' },
+  { keywords: ['sony'], adr: 'SONY', label: 'Sony Group Corp. — NYSE ADR (SONY)' },
+  { keywords: ['unilever'], adr: 'UL', label: 'Unilever PLC — NYSE ADR (UL)' },
+  { keywords: ['hsbc'], adr: 'HSBC', label: 'HSBC Holdings — NYSE ADR (HSBC)' },
+  { keywords: ['novartis'], adr: 'NVS', label: 'Novartis AG — NYSE ADR (NVS)' },
+  { keywords: ['sap se', 'sap ag'], adr: 'SAP', label: 'SAP SE — NYSE ADR (SAP)' },
+  { keywords: ['shell plc', 'royal dutch shell'], adr: 'SHEL', label: 'Shell plc — NYSE ADR (SHEL)' },
+  { keywords: ['bp plc'], adr: 'BP', label: 'BP plc — NYSE ADR (BP)' },
+];
+
+function normalizeForMatch(s) {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** Looks up a free US-listed ADR substitute from a company name or symbol string. Returns
+ *  {adr, label} or null. Matching is deliberately loose (punctuation/spacing-insensitive) since
+ *  it runs against whatever text triggered a plan-restricted error — a typed query, a search
+ *  result's display name, or the rejected symbol itself. */
+function findAdrFallback(text) {
+  if (!text) return null;
+  const norm = normalizeForMatch(text);
+  const hit = ADR_FALLBACKS.find(entry => entry.keywords.some(kw => norm.includes(normalizeForMatch(kw))));
+  return hit ? { adr: hit.adr, label: hit.label } : null;
 }
 
 /** Round a spot price to a "clean" nearest strike, the way listed option chains are spaced. */
