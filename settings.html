@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings — BSM Quant Desk</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">Σ</span>
+    <div class="brand-text">
+      <h1>BSM Quant Desk</h1>
+      <p>Black-Scholes-Merton Framework, Application &amp; Risk Architecture</p>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <a class="tab-btn" data-page="overview" href="index.html">Overview</a>
+    <a class="tab-btn" data-page="calculator" href="calculator.html">Calculator</a>
+    <a class="tab-btn" data-page="greeks" href="greeks.html">Greeks &amp; Sensitivity</a>
+    <a class="tab-btn" data-page="heatmap" href="heatmap.html">Delta Heat Map</a>
+    <a class="tab-btn" data-page="math" href="math.html">Mathematical Framework</a>
+    <a class="tab-btn" data-page="critique" href="critique.html">Assumptions &amp; Critique</a>
+    <a class="tab-btn" data-page="strategy" href="strategy.html">Strategies &amp; Risk</a>
+    <a class="tab-btn" data-page="verdict" href="verdict.html">SWOT &amp; Verdict</a>
+    <a class="tab-btn" data-page="insights" href="insights.html">Stock Insights</a>
+    <a class="tab-btn" data-page="settings" href="settings.html">Settings</a>
+  </nav>
+</header>
+
+<main>
+<section class="page">
+  <h2>Settings</h2>
+  <p class="lede">Everything here is stored only in this browser's <code>localStorage</code> — nothing is
+  sent anywhere except directly from your browser to the API providers below when you use live features.
+  There is no backend server for this site, so treat any key you paste here as visible to anyone with
+  access to this browser (use a free-tier key with no billing attached, not a production secret).</p>
+
+  <div class="panel">
+    <h3>Market Data — Twelve Data</h3>
+    <p>Powers the <a href="insights.html">Stock Insights</a> page and the "Load Live Data" panel on the
+    <a href="calculator.html">Calculator</a>: live quotes, price history, and the realized-volatility
+    calculation used as the σ input.</p>
+    <div class="field">
+      <label for="td-key">Twelve Data API Key</label>
+      <input type="password" id="td-key" placeholder="Paste your API key">
+    </div>
+    <p class="hint">Get a free key at
+      <a href="https://twelvedata.com/pricing" target="_blank" rel="noopener">twelvedata.com/pricing</a>
+      (Basic/free plan is enough — 800 requests/day, real-time-delayed quotes). CORS is enabled on their
+      free tier, so this page can call the API directly from your browser.</p>
+    <div class="settings-actions">
+      <button id="td-test-btn" class="secondary-btn">Test Key</button>
+      <span id="td-test-result" class="test-result"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Pricing Defaults</h3>
+    <p>Used to auto-fill the risk-free rate and dividend yield whenever you load live data for a stock —
+    Twelve Data's free tier doesn't reliably expose Treasury yields or forward dividend yield, so these
+    stay as editable assumptions rather than being silently guessed.</p>
+    <div class="field-row">
+      <div class="field"><label for="default-r">Default Risk-free Rate (r)</label>
+        <input type="number" id="default-r" step="0.001"></div>
+      <div class="field"><label for="default-q">Default Dividend Yield (q)</label>
+        <input type="number" id="default-q" step="0.001"></div>
+      <div class="field"><label for="vol-lookback">Volatility Lookback (trading days)</label>
+        <input type="number" id="vol-lookback" step="1" min="10" max="250"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Monetization — Google AdSense</h3>
+    <p>This site earns through Google AdSense <strong>Auto ads</strong>: once you paste your publisher ID
+    below, every page loads Google's Auto ads script, and Google's algorithm places ad units on its own —
+    no manual ad-slot wiring needed here. Sign up and get approved at
+    <a href="https://www.google.com/adsense/start/" target="_blank" rel="noopener">google.com/adsense</a>,
+    then find your publisher ID (format <code>ca-pub-XXXXXXXXXXXXXXXX</code>) under
+    <em>Account → Settings → Account information</em>.</p>
+    <div class="field">
+      <label for="adsense-id">AdSense Publisher ID</label>
+      <input type="text" id="adsense-id" placeholder="ca-pub-XXXXXXXXXXXXXXXX">
+    </div>
+    <p class="warn">Auto ads only activates on a real, approved AdSense account visiting the live deployed
+    site (not <code>localhost</code>) — Google's review process typically takes a few days after your
+    first real traffic.</p>
+  </div>
+
+  <div class="panel">
+    <button id="save-btn" class="primary-btn">Save Settings</button>
+    <span id="save-result" class="test-result"></span>
+  </div>
+</section>
+</main>
+
+<footer>
+  <p>BSM Quant Desk — a self-contained reference &amp; calculator for the Black-Scholes-Merton framework.
+  All computation runs client-side in JavaScript; API keys and preferences stay in your browser's
+  local storage. Live quotes are provided by <a href="https://twelvedata.com" target="_blank" rel="noopener">Twelve Data</a>
+  and may be delayed. Nothing on this site is financial, investment, or trading advice — model outputs
+  are theoretical estimates, not quoted market prices.</p>
+</footer>
+
+<script src="js/bsm-core.js"></script>
+<script src="js/market.js"></script>
+<script>
+initNav('settings');
+initAds();
+
+const $ = (id) => document.getElementById(id);
+
+function populate() {
+  const s = getSettings();
+  $('td-key').value = s.twelveDataKey;
+  $('default-r').value = s.defaultRiskFreeRate;
+  $('default-q').value = s.defaultDividendYield;
+  $('vol-lookback').value = s.volatilityLookbackDays;
+  $('adsense-id').value = s.adsensePublisherId;
+}
+
+function readForm() {
+  return {
+    twelveDataKey: $('td-key').value.trim(),
+    defaultRiskFreeRate: parseFloat($('default-r').value) || 0,
+    defaultDividendYield: parseFloat($('default-q').value) || 0,
+    volatilityLookbackDays: parseInt($('vol-lookback').value, 10) || 60,
+    adsensePublisherId: $('adsense-id').value.trim()
+  };
+}
+
+async function testKey() {
+  setSettings(readForm());
+  const resultEl = $('td-test-result');
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result';
+  try {
+    const quote = await getQuote('AAPL');
+    resultEl.textContent = `✓ Key works — AAPL last close ${quote.close}`;
+    resultEl.className = 'test-result ok';
+  } catch (e) {
+    resultEl.textContent = `✗ ${e.message}`;
+    resultEl.className = 'test-result fail';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  populate();
+  $('save-btn').addEventListener('click', () => {
+    setSettings(readForm());
+    const el = $('save-result');
+    el.textContent = '✓ Saved';
+    el.className = 'test-result ok';
+    setTimeout(() => { el.textContent = ''; }, 2500);
+  });
+  $('td-test-btn').addEventListener('click', testKey);
+});
+</script>
+</body>
+</html>

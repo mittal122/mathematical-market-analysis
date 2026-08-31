@@ -124,6 +124,47 @@ function setBsmState(state) {
   } catch (e) { /* private browsing / storage disabled: state just won't persist */ }
 }
 
+/* ===================== App settings (API keys, defaults, monetization) ===================== */
+
+const BSM_DEFAULT_SETTINGS = {
+  twelveDataKey: '',
+  defaultRiskFreeRate: 0.05,
+  defaultDividendYield: 0,
+  volatilityLookbackDays: 60,
+  adsensePublisherId: ''
+};
+const BSM_SETTINGS_KEY = 'bsm-quant-desk-settings';
+
+function getSettings() {
+  try {
+    const raw = localStorage.getItem(BSM_SETTINGS_KEY);
+    if (!raw) return { ...BSM_DEFAULT_SETTINGS };
+    return { ...BSM_DEFAULT_SETTINGS, ...JSON.parse(raw) };
+  } catch (e) {
+    return { ...BSM_DEFAULT_SETTINGS };
+  }
+}
+
+function setSettings(settings) {
+  try {
+    localStorage.setItem(BSM_SETTINGS_KEY, JSON.stringify(settings));
+  } catch (e) { /* private browsing / storage disabled */ }
+}
+
+/** Injects the Google AdSense Auto Ads loader if the user has configured a publisher ID
+ *  on the Settings page. Ad placement itself is handled automatically by Google — this
+ *  site never fabricates ad units or slot IDs. No-op until a real ID is set. */
+function initAds() {
+  const { adsensePublisherId } = getSettings();
+  if (!adsensePublisherId || document.getElementById('adsense-loader')) return;
+  const script = document.createElement('script');
+  script.id = 'adsense-loader';
+  script.async = true;
+  script.crossOrigin = 'anonymous';
+  script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(adsensePublisherId)}`;
+  document.head.appendChild(script);
+}
+
 /* ===================== Chart.js shared defaults ===================== */
 
 const CHART_COLORS = {

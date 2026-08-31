@@ -26,6 +26,8 @@
     <a class="tab-btn" data-page="critique" href="critique.html">Assumptions &amp; Critique</a>
     <a class="tab-btn" data-page="strategy" href="strategy.html">Strategies &amp; Risk</a>
     <a class="tab-btn" data-page="verdict" href="verdict.html">SWOT &amp; Verdict</a>
+    <a class="tab-btn" data-page="insights" href="insights.html">Stock Insights</a>
+    <a class="tab-btn" data-page="settings" href="settings.html">Settings</a>
   </nav>
 </header>
 
@@ -63,13 +65,17 @@
 
 <footer>
   <p>BSM Quant Desk — a self-contained reference &amp; calculator for the Black-Scholes-Merton framework.
-  All computation runs client-side in JavaScript; no data leaves the browser.</p>
+  All computation runs client-side in JavaScript; API keys and preferences stay in your browser's
+  local storage. Live quotes are provided by <a href="https://twelvedata.com" target="_blank" rel="noopener">Twelve Data</a>
+  and may be delayed. Nothing on this site is financial, investment, or trading advice — model outputs
+  are theoretical estimates, not quoted market prices.</p>
 </footer>
 
 <script src="js/bsm-core.js"></script>
 <script>
 initNav('greeks');
 initChartDefaults();
+initAds();
 
 const inp = getBsmState();
 document.getElementById('param-summary').textContent =

@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="css/style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 </head>
+
 <body>
 
 <header class="topbar">
@@ -26,6 +27,8 @@
     <a class="tab-btn" data-page="critique" href="critique.html">Assumptions &amp; Critique</a>
     <a class="tab-btn" data-page="strategy" href="strategy.html">Strategies &amp; Risk</a>
     <a class="tab-btn" data-page="verdict" href="verdict.html">SWOT &amp; Verdict</a>
+    <a class="tab-btn" data-page="insights" href="insights.html">Stock Insights</a>
+    <a class="tab-btn" data-page="settings" href="settings.html">Settings</a>
   </nav>
 </header>
 
@@ -37,6 +40,24 @@
   precise fair value live: ≈ 163.60, not the 177.42 figure the source write-up quoted. Always verify
   a "fair value" against the actual formula rather than trusting a quoted number. These inputs are
   saved to your browser and reused on the Greeks, Heat Map, and Critique pages.</p>
+
+  <div id="no-key-banner" class="panel warn-banner" hidden>
+    <strong>No Twelve Data API key set.</strong>
+    <p>Add a free key on the <a href="settings.html">Settings</a> page to auto-fill this form from a
+    live stock — or keep entering values manually below.</p>
+  </div>
+
+  <div class="panel">
+    <h3>Load Live Data</h3>
+    <p>Type a company name or ticker to pull its live price and fill S and σ (via realized volatility)
+    automatically. Or visit <a href="insights.html">Stock Insights</a> for the full dashboard first.</p>
+    <div class="search-row">
+      <input type="text" id="stock-search" placeholder="e.g. Apple, TSLA, Microsoft…" autocomplete="off">
+      <button id="stock-load-btn" class="secondary-btn">Load</button>
+    </div>
+    <div id="search-results" class="search-results" hidden></div>
+    <div id="load-status" class="test-result"></div>
+  </div>
 
   <div class="calc-grid">
     <div class="panel inputs">
@@ -90,13 +111,19 @@
 
 <footer>
   <p>BSM Quant Desk — a self-contained reference &amp; calculator for the Black-Scholes-Merton framework.
-  All computation runs client-side in JavaScript; no data leaves the browser.</p>
+  All computation runs client-side in JavaScript; API keys and preferences stay in your browser's
+  local storage. Live quotes are provided by <a href="https://twelvedata.com" target="_blank" rel="noopener">Twelve Data</a>
+  and may be delayed. Nothing on this site is financial, investment, or trading advice — model outputs
+  are theoretical estimates, not quoted market prices.</p>
 </footer>
 
 <script src="js/bsm-core.js"></script>
+<script src="js/market.js"></script>
 <script>
 initNav('calculator');
 initChartDefaults();
+initAds();
+document.getElementById('no-key-banner').hidden = !!getSettings().twelveDataKey;
 
 let payoffChart;
 
@@ -165,11 +192,74 @@ function updatePayoffChart(inp) {
   else payoffChart = new Chart(ctx, { type: 'line', data, options: baseLineOptions('Option Value') });
 }
 
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+async function runSearch(query) {
+  if (!getSettings().twelveDataKey || !query.trim()) { $('search-results').hidden = true; return; }
+  try {
+    const matches = await searchSymbol(query);
+    const box = $('search-results');
+    box.innerHTML = '';
+    if (!matches.length) { box.hidden = true; return; }
+    matches.forEach(m => {
+      const row = el('div', 'search-result-row',
+        `${m.symbol} — ${m.instrument_name} (${m.exchange || m.country || ''})`);
+      row.addEventListener('click', () => loadStock(m.symbol));
+      box.appendChild(row);
+    });
+    box.hidden = false;
+  } catch (e) {
+    $('load-status').textContent = `✗ ${e.message}`;
+    $('load-status').className = 'test-result fail';
+  }
+}
+
+async function loadStock(symbol) {
+  $('search-results').hidden = true;
+  $('stock-search').value = symbol;
+  $('load-status').textContent = `Loading ${symbol}…`;
+  $('load-status').className = 'test-result';
+  try {
+    const [quote, history] = await Promise.all([getQuote(symbol), getDailyHistory(symbol, 260)]);
+    const settings = getSettings();
+    const sigma = historicalVolatility(history, settings.volatilityLookbackDays);
+    if (sigma === null) throw new MarketDataError('Not enough price history to compute volatility.', 'not-found');
+
+    const S = parseFloat(quote.close);
+    $('opt-type').value = 'call';
+    $('S').value = S;
+    $('K').value = nearestCleanStrike(S);
+    $('sigma').value = sigma.toFixed(4);
+    $('r').value = settings.defaultRiskFreeRate;
+    $('q').value = settings.defaultDividendYield;
+    recalculate();
+
+    $('load-status').textContent = `✓ Loaded ${symbol} — spot ${fmt(S, 2)}, historical σ ${(sigma * 100).toFixed(2)}%`;
+    $('load-status').className = 'test-result ok';
+  } catch (e) {
+    $('load-status').textContent = `✗ ${e.message}`;
+    $('load-status').className = 'test-result fail';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   populateFromState();
   $('calc-btn').addEventListener('click', recalculate);
   ['opt-type', 'S', 'K', 'T', 'sigma', 'r', 'q'].forEach(id => $(id).addEventListener('change', recalculate));
   recalculate();
+
+  const debounced = debounce((v) => runSearch(v), 400);
+  $('stock-search').addEventListener('input', (e) => debounced(e.target.value));
+  $('stock-load-btn').addEventListener('click', () => {
+    const v = $('stock-search').value.trim();
+    if (v) loadStock(v.toUpperCase());
+  });
+  $('stock-search').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); $('stock-load-btn').click(); }
+  });
 });
 </script>
 </body>

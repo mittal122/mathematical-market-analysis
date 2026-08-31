@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Insights — BSM Quant Desk</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">Σ</span>
+    <div class="brand-text">
+      <h1>BSM Quant Desk</h1>
+      <p>Black-Scholes-Merton Framework, Application &amp; Risk Architecture</p>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <a class="tab-btn" data-page="overview" href="index.html">Overview</a>
+    <a class="tab-btn" data-page="calculator" href="calculator.html">Calculator</a>
+    <a class="tab-btn" data-page="greeks" href="greeks.html">Greeks &amp; Sensitivity</a>
+    <a class="tab-btn" data-page="heatmap" href="heatmap.html">Delta Heat Map</a>
+    <a class="tab-btn" data-page="math" href="math.html">Mathematical Framework</a>
+    <a class="tab-btn" data-page="critique" href="critique.html">Assumptions &amp; Critique</a>
+    <a class="tab-btn" data-page="strategy" href="strategy.html">Strategies &amp; Risk</a>
+    <a class="tab-btn" data-page="verdict" href="verdict.html">SWOT &amp; Verdict</a>
+    <a class="tab-btn" data-page="insights" href="insights.html">Stock Insights</a>
+    <a class="tab-btn" data-page="settings" href="settings.html">Settings</a>
+  </nav>
+</header>
+
+<main>
+<section class="page">
+  <h2>Stock Insights</h2>
+  <p class="lede">Type a company name or ticker. This pulls a live quote and price history from Twelve
+  Data, computes realized (historical) volatility from real returns, and feeds all of it straight into
+  the BSM pricing engine — no manual parameter entry required.</p>
+
+  <div id="no-key-banner" class="panel warn-banner" hidden>
+    <strong>No Twelve Data API key set.</strong>
+    <p>Add a free key on the <a href="settings.html">Settings</a> page to use live stock data.</p>
+  </div>
+
+  <div class="panel">
+    <div class="search-row">
+      <input type="text" id="search-input" placeholder="e.g. Apple, TSLA, Microsoft…" autocomplete="off">
+      <button id="search-btn" class="primary-btn">Look Up</button>
+    </div>
+    <div id="search-results" class="search-results" hidden></div>
+    <div id="load-status" class="test-result"></div>
+  </div>
+
+  <div id="insights-body" hidden>
+    <div class="panel">
+      <div class="stock-header">
+        <div>
+          <h3 id="stock-name">—</h3>
+          <p id="stock-meta" class="muted">—</p>
+        </div>
+        <div class="stock-price-block">
+          <span class="result-value" id="stock-price">—</span>
+          <span id="stock-change" class="change-badge">—</span>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="node"><span>Day Range</span><strong id="stat-day-range">—</strong></div>
+        <div class="node"><span>52-Week Range</span><strong id="stat-52w-range">—</strong></div>
+        <div class="node"><span>Volume</span><strong id="stat-volume">—</strong></div>
+        <div class="node"><span>Previous Close</span><strong id="stat-prev-close">—</strong></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Price History (<span id="hist-days">—</span> sessions)</h3>
+      <div class="chart-box"><canvas id="priceChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <h3>Realized Volatility → BSM Input</h3>
+      <p>Annualized standard deviation of daily log returns over the lookback window set on
+      <a href="settings.html">Settings</a> — a data-driven stand-in for σ, in place of guessing.</p>
+      <div class="node-grid">
+        <div class="node"><span>Historical Volatility (σ)</span><strong id="hv-out">—</strong></div>
+        <div class="node"><span>Lookback</span><strong id="hv-lookback">—</strong></div>
+        <div class="node"><span>Risk-free Rate (r)</span><strong id="r-out">—</strong></div>
+        <div class="node"><span>Dividend Yield (q)</span><strong id="q-out">—</strong></div>
+      </div>
+      <p class="hint">r and q come from your defaults on the Settings page — edit them there, or override
+      on the Calculator after sending this stock across.</p>
+    </div>
+
+    <div class="panel">
+      <h3>Options Snapshot — ATM ± 2 Strikes, Multiple Expiries</h3>
+      <p>Computed live with the BSM closed-form solution using the spot price, historical volatility, and
+      rate/yield above. Not a quoted market price — a model estimate, exactly as the framework describes.</p>
+      <div class="table-wrap">
+        <table id="snapshot-table">
+          <thead><tr><th>Strike</th><th>1M Call</th><th>1M Put</th><th>3M Call</th><th>3M Put</th><th>6M Call</th><th>6M Put</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button id="open-calc-btn" class="primary-btn">Open ATM Call in Calculator →</button>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <p>BSM Quant Desk — a self-contained reference &amp; calculator for the Black-Scholes-Merton framework.
+  All computation runs client-side in JavaScript; API keys and preferences stay in your browser's
+  local storage. Live quotes are provided by <a href="https://twelvedata.com" target="_blank" rel="noopener">Twelve Data</a>
+  and may be delayed. Nothing on this site is financial, investment, or trading advice — model outputs
+  are theoretical estimates, not quoted market prices.</p>
+</footer>
+
+<script src="js/bsm-core.js"></script>
+<script src="js/market.js"></script>
+<script>
+initNav('insights');
+initChartDefaults();
+initAds();
+
+const $ = (id) => document.getElementById(id);
+let priceChart;
+let currentSymbol = null;
+let currentQuote = null;
+let currentSigma = null;
+
+function checkKey() {
+  const has = !!getSettings().twelveDataKey;
+  $('no-key-banner').hidden = has;
+  return has;
+}
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+async function runSearch(query) {
+  if (!checkKey() || !query.trim()) { $('search-results').hidden = true; return; }
+  try {
+    const matches = await searchSymbol(query);
+    const box = $('search-results');
+    box.innerHTML = '';
+    if (!matches.length) { box.hidden = true; return; }
+    matches.forEach(m => {
+      const row = el('div', 'search-result-row',
+        `${m.symbol} — ${m.instrument_name} (${m.exchange || m.country || ''})`);
+      row.addEventListener('click', () => loadStock(m.symbol));
+      box.appendChild(row);
+    });
+    box.hidden = false;
+  } catch (e) {
+    $('load-status').textContent = `✗ ${e.message}`;
+    $('load-status').className = 'test-result fail';
+  }
+}
+
+async function loadStock(symbol) {
+  $('search-results').hidden = true;
+  $('search-input').value = symbol;
+  $('load-status').textContent = `Loading ${symbol}…`;
+  $('load-status').className = 'test-result';
+  $('insights-body').hidden = true;
+
+  try {
+    const [quote, history] = await Promise.all([getQuote(symbol), getDailyHistory(symbol, 260)]);
+    const settings = getSettings();
+    const sigma = historicalVolatility(history, settings.volatilityLookbackDays);
+    if (sigma === null) throw new MarketDataError('Not enough price history to compute volatility.', 'not-found');
+
+    currentSymbol = symbol;
+    currentQuote = quote;
+    currentSigma = sigma;
+
+    renderQuote(quote);
+    renderChart(history, settings.volatilityLookbackDays);
+    renderVolBlock(sigma, settings);
+    renderSnapshot(quote, sigma, settings);
+
+    $('load-status').textContent = '';
+    $('insights-body').hidden = false;
+  } catch (e) {
+    $('load-status').textContent = `✗ ${e.message}`;
+    $('load-status').className = 'test-result fail';
+  }
+}
+
+function renderQuote(q) {
+  $('stock-name').textContent = `${q.name || q.symbol} (${q.symbol})`;
+  $('stock-meta').textContent = `${q.exchange || ''} · ${q.currency || ''}`;
+  $('stock-price').textContent = fmt(parseFloat(q.close), 2);
+  const change = parseFloat(q.change), pct = parseFloat(q.percent_change);
+  const badge = $('stock-change');
+  badge.textContent = `${change >= 0 ? '+' : ''}${fmt(change, 2)} (${change >= 0 ? '+' : ''}${fmt(pct, 2)}%)`;
+  badge.className = 'change-badge ' + (change >= 0 ? 'up' : 'down');
+
+  $('stat-day-range').textContent = `${fmt(parseFloat(q.low), 2)} – ${fmt(parseFloat(q.high), 2)}`;
+  const w52 = q.fifty_two_week || {};
+  $('stat-52w-range').textContent = w52.low && w52.high ? `${fmt(parseFloat(w52.low), 2)} – ${fmt(parseFloat(w52.high), 2)}` : '—';
+  $('stat-volume').textContent = q.volume ? Number(q.volume).toLocaleString() : '—';
+  $('stat-prev-close').textContent = fmt(parseFloat(q.previous_close), 2);
+}
+
+function renderChart(history, lookback) {
+  $('hist-days').textContent = history.length;
+  const labels = history.map(h => h.date);
+  const closes = history.map(h => h.close);
+  const data = {
+    labels,
+    datasets: [{ label: 'Close', data: closes, borderColor: CHART_COLORS.accent, backgroundColor: 'rgba(63,208,201,0.08)', fill: true, borderWidth: 2, pointRadius: 0, tension: .15 }]
+  };
+  if (priceChart) { priceChart.data = data; priceChart.update(); }
+  else priceChart = new Chart($('priceChart').getContext('2d'), { type: 'line', data, options: baseLineOptions('Close Price') });
+}
+
+function renderVolBlock(sigma, settings) {
+  $('hv-out').textContent = (sigma * 100).toFixed(2) + '%';
+  $('hv-lookback').textContent = settings.volatilityLookbackDays + ' trading days';
+  $('r-out').textContent = settings.defaultRiskFreeRate;
+  $('q-out').textContent = settings.defaultDividendYield;
+}
+
+function renderSnapshot(quote, sigma, settings) {
+  const S = parseFloat(quote.close);
+  const atm = nearestCleanStrike(S);
+  const strikeStep = atm >= 200 ? 10 : atm >= 50 ? 5 : 1;
+  const strikes = [atm - 2 * strikeStep, atm - strikeStep, atm, atm + strikeStep, atm + 2 * strikeStep];
+  const expiries = [{ label: '1M', T: 1 / 12 }, { label: '3M', T: 0.25 }, { label: '6M', T: 0.5 }];
+
+  const tbody = document.querySelector('#snapshot-table tbody');
+  tbody.innerHTML = '';
+  strikes.forEach(K => {
+    const tr = document.createElement('tr');
+    if (K === atm) tr.classList.add('atm-row');
+    let rowHtml = `<td>${fmt(K, 2)}${K === atm ? ' <span class="atm-tag">ATM</span>' : ''}</td>`;
+    expiries.forEach(({ T }) => {
+      const call = bsmPrice(S, K, T, sigma, settings.defaultRiskFreeRate, settings.defaultDividendYield, 'call').price;
+      const put = bsmPrice(S, K, T, sigma, settings.defaultRiskFreeRate, settings.defaultDividendYield, 'put').price;
+      rowHtml += `<td>${fmt(call, 2)}</td><td>${fmt(put, 2)}</td>`;
+    });
+    tr.innerHTML = rowHtml;
+    tbody.appendChild(tr);
+  });
+
+  $('open-calc-btn').onclick = () => {
+    setBsmState({
+      type: 'call', S, K: atm, T: 0.25, sigma,
+      r: settings.defaultRiskFreeRate, q: settings.defaultDividendYield
+    });
+    window.location.href = 'calculator.html';
+  };
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  checkKey();
+  const debounced = debounce((v) => runSearch(v), 400);
+  $('search-input').addEventListener('input', (e) => debounced(e.target.value));
+  $('search-btn').addEventListener('click', () => {
+    const v = $('search-input').value.trim();
+    if (v) loadStock(v.toUpperCase());
+  });
+  $('search-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); $('search-btn').click(); }
+  });
+});
+</script>
+</body>
+</html>
