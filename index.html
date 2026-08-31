@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BSM Quant Desk — Black-Scholes-Merton Analysis</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">Σ</span>
+    <div class="brand-text">
+      <h1>BSM Quant Desk</h1>
+      <p>Black-Scholes-Merton Framework, Application &amp; Risk Architecture</p>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="calculator">Calculator</button>
+    <button class="tab-btn" data-tab="greeks">Greeks &amp; Sensitivity</button>
+    <button class="tab-btn" data-tab="heatmap">Delta Heat Map</button>
+    <button class="tab-btn" data-tab="math">Mathematical Framework</button>
+    <button class="tab-btn" data-tab="critique">Assumptions &amp; Critique</button>
+    <button class="tab-btn" data-tab="strategy">Strategies &amp; Risk</button>
+    <button class="tab-btn" data-tab="verdict">SWOT &amp; Verdict</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ============ OVERVIEW ============ -->
+<section class="tab-panel active" id="overview">
+  <div class="hero">
+    <h2>The Trillion-Dollar Equation</h2>
+    <p class="lede">Before 1973, options pricing was heuristic guesswork. The Black-Scholes-Merton (BSM) model
+    — introduced alongside the opening of the Chicago Board Options Exchange (CBOE) — replaced that guesswork
+    with a deterministic, arbitrage-free framework that reconciles risk, time, and volatility. It didn't just
+    describe the derivatives market; it created the conditions for it to scale into a multi-trillion-dollar
+    industry.</p>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>1973</h3>
+      <p>Fischer Black, Myron Scholes &amp; Robert Merton publish the seminal papers, coinciding with the
+      launch of the CBOE — the first real-world laboratory for the model.</p>
+    </div>
+    <div class="card">
+      <h3>Deterministic Pricing</h3>
+      <p>A closed-form solution reconciling six observable inputs into a single fair-value estimate,
+      replacing ad-hoc quoting with a common risk language.</p>
+    </div>
+    <div class="card">
+      <h3>The Greeks</h3>
+      <p>Partial derivatives of option value — Delta, Gamma, Vega, Theta, Rho — became the standard
+      real-time risk matrix for every trading desk on earth.</p>
+    </div>
+    <div class="card">
+      <h3>The Catch</h3>
+      <p>The model's elegance rests on assumptions — constant volatility, continuous hedging, log-normal
+      returns — that fracture under market stress. It is a compass, not the map.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>The Six Inputs — the "DNA" of the Option Price</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Parameter</th><th>Symbol</th><th>Strategic Description</th></tr></thead>
+        <tbody>
+          <tr><td>Spot Price</td><td><i>S</i></td><td>Current market value of the underlying asset.</td></tr>
+          <tr><td>Strike Price</td><td><i>K</i></td><td>The contractual price for exercise.</td></tr>
+          <tr><td>Time to Expiry</td><td><i>T</i></td><td>Annualized time remaining in the contract life.</td></tr>
+          <tr><td>Volatility</td><td><i>σ</i></td><td>Annualized standard deviation of returns — the model's "plug" variable.</td></tr>
+          <tr><td>Risk-free Rate</td><td><i>r</i></td><td>Theoretical return on zero-risk collateral.</td></tr>
+          <tr><td>Dividend Yield</td><td><i>q</i></td><td>The continuous rate of income from the underlying asset.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CALCULATOR ============ -->
+<section class="tab-panel" id="calculator">
+  <h2>Live Pricing Engine</h2>
+  <p class="lede">Enter the six BSM inputs. Values default to the report's index-option case study
+  (S=2000, K=1900, T=0.25, σ=0.25, r=0.05, q=0.02) — the closed-form solution below computes the
+  precise fair value live: ≈ 163.60, not the 177.42 figure the source write-up quoted. This is a
+  useful reminder in itself — always verify a "fair value" against the actual formula rather than
+  trusting a quoted number.</p>
+
+  <div class="calc-grid">
+    <div class="panel inputs">
+      <h3>Inputs</h3>
+      <div class="field">
+        <label for="opt-type">Option Type</label>
+        <select id="opt-type">
+          <option value="call" selected>Call</option>
+          <option value="put">Put</option>
+        </select>
+      </div>
+      <div class="field"><label for="S">Spot Price (S)</label><input type="number" id="S" value="2000" step="1"></div>
+      <div class="field"><label for="K">Strike Price (K)</label><input type="number" id="K" value="1900" step="1"></div>
+      <div class="field"><label for="T">Time to Expiry, years (T)</label><input type="number" id="T" value="0.25" step="0.01"></div>
+      <div class="field"><label for="sigma">Volatility, σ (e.g. 0.25 = 25%)</label><input type="number" id="sigma" value="0.25" step="0.01"></div>
+      <div class="field"><label for="r">Risk-free Rate, r</label><input type="number" id="r" value="0.05" step="0.001"></div>
+      <div class="field"><label for="q">Dividend Yield, q</label><input type="number" id="q" value="0.02" step="0.001"></div>
+      <button id="calc-btn" class="primary-btn">Recalculate</button>
+    </div>
+
+    <div class="panel results">
+      <h3>Fair Value &amp; Intermediate Nodes</h3>
+      <div class="result-hero">
+        <span class="result-label" id="price-label">Call Price</span>
+        <span class="result-value" id="price-out">—</span>
+      </div>
+      <div class="node-grid">
+        <div class="node"><span>d₁</span><strong id="d1-out">—</strong></div>
+        <div class="node"><span>d₂</span><strong id="d2-out">—</strong></div>
+        <div class="node"><span>N(d₁)</span><strong id="nd1-out">—</strong></div>
+        <div class="node"><span>N(d₂)</span><strong id="nd2-out">—</strong></div>
+      </div>
+
+      <h3>Greek Matrix</h3>
+      <div class="greek-grid">
+        <div class="greek"><span>Delta (Δ)</span><strong id="g-delta">—</strong></div>
+        <div class="greek"><span>Gamma (Γ)</span><strong id="g-gamma">—</strong></div>
+        <div class="greek"><span>Vega (ν) / 1%</span><strong id="g-vega">—</strong></div>
+        <div class="greek"><span>Theta (Θ) / day</span><strong id="g-theta">—</strong></div>
+        <div class="greek"><span>Rho (ρ) / 1%</span><strong id="g-rho">—</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Payoff at Expiry vs. Current Fair Value</h3>
+    <div class="chart-box"><canvas id="payoffChart"></canvas></div>
+  </div>
+</section>
+
+<!-- ============ GREEKS & SENSITIVITY ============ -->
+<section class="tab-panel" id="greeks">
+  <h2>Greeks &amp; Sensitivity Analysis</h2>
+  <p class="lede">Reads live from the Calculator tab's inputs. Each chart sweeps the underlying spot price
+  across a band around <i>K</i>, holding the other four parameters fixed, to reveal path dependency and
+  convexity risk.</p>
+
+  <div class="chart-grid">
+    <div class="panel"><h3>Delta (Δ) vs Spot</h3><div class="chart-box small"><canvas id="deltaChart"></canvas></div></div>
+    <div class="panel"><h3>Gamma (Γ) vs Spot</h3><div class="chart-box small"><canvas id="gammaChart"></canvas></div></div>
+    <div class="panel"><h3>Vega (ν) vs Spot</h3><div class="chart-box small"><canvas id="vegaChart"></canvas></div></div>
+    <div class="panel"><h3>Theta (Θ) vs Spot</h3><div class="chart-box small"><canvas id="thetaChart"></canvas></div></div>
+  </div>
+
+  <div class="panel">
+    <h3>Greek Reference</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Greek</th><th>Definition</th><th>Strategic Interpretation</th></tr></thead>
+        <tbody>
+          <tr><td>Delta (Δ)</td><td>∂V/∂S</td><td>Directional exposure; the "Hedge Ratio."</td></tr>
+          <tr><td>Gamma (Γ)</td><td>∂²V/∂S²</td><td>Convexity; rate of change in Delta. Measures path-dependency risk.</td></tr>
+          <tr><td>Vega (ν)</td><td>∂V/∂σ</td><td>Sensitivity to volatility-surface shifts.</td></tr>
+          <tr><td>Theta (Θ)</td><td>∂V/∂t</td><td>Time decay; the "rent" paid for holding the position.</td></tr>
+          <tr><td>Rho (ρ)</td><td>∂V/∂r</td><td>Sensitivity to the term structure of interest rates.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HEATMAP ============ -->
+<section class="tab-panel" id="heatmap">
+  <h2>Delta Heat Map — Strike × Time Probability Density</h2>
+  <p class="lede">Unlike a static payoff diagram at expiry, this grid visualizes the probability
+  density of the option finishing in-the-money (N(d₂)) and the Delta (N(d₁)) across a range of strikes
+  and time-to-expiry — the tool a Lead Strategist uses to spot where a portfolio is most exposed to
+  rapid Delta shifts.</p>
+
+  <div class="panel">
+    <div class="field-row">
+      <div class="field"><label for="hm-metric">Metric</label>
+        <select id="hm-metric">
+          <option value="delta" selected>Delta (Hedge Ratio)</option>
+          <option value="itm">ITM Probability, N(d₂)</option>
+          <option value="gamma">Gamma (Convexity)</option>
+        </select>
+      </div>
+    </div>
+    <div id="heatmap-grid" class="heatmap-grid"></div>
+    <div class="legend">
+      <span>Low</span><div class="legend-bar"></div><span>High</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MATH FRAMEWORK ============ -->
+<section class="tab-panel" id="math">
+  <h2>Parameter Extraction &amp; the Governing PDE</h2>
+
+  <div class="panel">
+    <h3>The Black-Scholes-Merton PDE</h3>
+    <div class="equation">
+      ∂V/∂t &nbsp;+&nbsp; ½σ²S² ∂²V/∂S² &nbsp;+&nbsp; (r − q)S ∂V/∂S &nbsp;−&nbsp; rV &nbsp;=&nbsp; 0
+    </div>
+    <ul class="term-list">
+      <li><strong>∂V/∂t</strong> — Theta, time decay.</li>
+      <li><strong>½σ²S² ∂²V/∂S²</strong> — the Gamma / convexity term: the "cost" of hedging.</li>
+      <li><strong>(r − q)S ∂V/∂S</strong> — the drift / cost-of-carry adjustment.</li>
+      <li><strong>−rV</strong> — discounting of the option value.</li>
+    </ul>
+  </div>
+
+  <div class="panel">
+    <h3>Closed-Form Solution</h3>
+    <div class="equation">C = S e<sup>−qT</sup> N(d₁) − K e<sup>−rT</sup> N(d₂)</div>
+    <div class="equation">P = K e<sup>−rT</sup> N(−d₂) − S e<sup>−qT</sup> N(−d₁)</div>
+    <div class="equation">d₁ = [ ln(S/K) + (r − q + σ²/2)T ] / (σ√T)</div>
+    <div class="equation">d₂ = d₁ − σ√T</div>
+    <p><strong>N(d₁)</strong> is the Hedge Ratio (Delta) — the exact quantity of the underlying required
+    for risk-neutral replication. <strong>N(d₂)</strong> is the risk-neutral probability that the option
+    expires in-the-money under the ℚ-measure.</p>
+  </div>
+
+  <div class="panel">
+    <h3>First Principles: GBM, Itô's Lemma &amp; Replication</h3>
+    <div class="equation">dS = μS dt + σS dW</div>
+    <p>The underlying follows Geometric Brownian Motion, where <em>dW</em> is a Wiener process representing
+    market noise. <strong>Itô's Lemma</strong> is the bridge between this stochastic process and the
+    deterministic option price — it maps the randomness of the stock onto the option's value.</p>
+    <p>The <strong>Replication Argument</strong>: by maintaining a Delta-neutral portfolio (short the option,
+    long Δ shares), a trader eliminates the <em>dW</em> term. This self-financing, riskless portfolio must
+    earn the risk-free rate <em>r</em> to preclude arbitrage — justifying <strong>Risk-Neutral Valuation</strong>:
+    price the option as if the world were risk-neutral, regardless of actual investor risk appetite.</p>
+  </div>
+
+  <div class="panel">
+    <h3>Numerical Approximation for N(x) — Abramowitz &amp; Stegun</h3>
+    <p>Since N(x) has no closed-form integral, this site (and most production pricing engines) uses the
+    high-precision polynomial approximation:</p>
+    <div class="equation">N(x) ≈ 1 − φ(x)(a₁k + a₂k² + a₃k³ + a₄k⁴ + a₅k⁵), &nbsp; x ≥ 0</div>
+    <div class="equation">k = 1 / (1 + 0.2316419x), &nbsp; φ(x) = (1/√2π) e<sup>−x²/2</sup></div>
+    <p class="constants">a₁=0.31938&nbsp; a₂=−0.35656&nbsp; a₃=1.78147&nbsp; a₄=−1.82125&nbsp; a₅=1.33027</p>
+  </div>
+
+  <div class="panel">
+    <h3>Algorithmic Workflow</h3>
+    <ol class="steps">
+      <li>Ingest real-time feeds for S, K, T, σ, r, q.</li>
+      <li>Calculate intermediate nodes d₁ and d₂.</li>
+      <li>Approximate N(x) via the Abramowitz &amp; Stegun polynomial.</li>
+      <li>Solve the closed-form Call/Put equations.</li>
+      <li>Compute the Greek matrix for real-time risk monitoring.</li>
+    </ol>
+    <p class="warn">Data Integrity Mandate: stale volatility or rate data creates model risk. In
+    high-frequency environments, a 1-basis-point error in <em>r</em> or a 1% lag in <em>σ</em> can
+    invalidate an entire Delta hedge.</p>
+  </div>
+</section>
+
+<!-- ============ CRITIQUE ============ -->
+<section class="tab-panel" id="critique">
+  <h2>Critical Validation of Model Assumptions</h2>
+  <p class="lede">Model sophistication is dangerous without an acute awareness of failure modes. BSM's
+  "elegant" assumptions frequently fracture under market stress.</p>
+
+  <div class="card-grid">
+    <div class="card warn-card">
+      <h3>Volatility Smile</h3>
+      <p>BSM assumes constant σ. The existence of the volatility smile — higher implied volatility for
+      OTM puts/calls — proves the model is fundamentally misspecified. Traders use Implied Volatility as
+      a <em>plug-figure</em>, forcing the model to match market prices rather than forecasting true
+      future volatility.</p>
+    </div>
+    <div class="card warn-card">
+      <h3>Fat Tails (Leptokurtosis)</h3>
+      <p>BSM assumes log-normal returns. Real markets exhibit fat tails — extreme moves occur far more
+      often than the model predicts — leading to systematic underpricing of tail risk.</p>
+    </div>
+    <div class="card warn-card">
+      <h3>Pin Risk</h3>
+      <p>BSM assumes a frictionless market. As T → 0 and S → K, Gamma explodes toward infinity, making
+      the Delta position hypersensitive and continuous-hedging transaction costs prohibitive.</p>
+    </div>
+    <div class="card warn-card">
+      <h3>Liquidity Black Holes</h3>
+      <p>BSM assumes continuous hedging is always possible. During a crash, price gaps make continuous
+      rebalancing impossible — causing catastrophic slippage and total breakdown of the Delta-neutral
+      stance.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Live Volatility Smile Explorer</h3>
+    <p>Illustrative smile curve: implied volatility rises for strikes further from the current spot,
+    contradicting BSM's flat-σ assumption. Adjust the base volatility and skew on the Calculator tab's σ
+    field to see the fair-value effect at a single strike — this chart shows the shape across strikes.</p>
+    <div class="chart-box"><canvas id="smileChart"></canvas></div>
+  </div>
+</section>
+
+<!-- ============ STRATEGY ============ -->
+<section class="tab-panel" id="strategy">
+  <h2>Quantitative Trading Strategies &amp; Failure Modes</h2>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>Volatility Arbitrage</h3>
+      <p>Trading the spread between Implied Volatility (model input) and Realized Volatility (actual
+      market movement).</p>
+    </div>
+    <div class="card">
+      <h3>Delta-Neutral Hedging</h3>
+      <p>Maintaining Δ = 0 to isolate profits from Gamma (scalping) or Theta (selling time).</p>
+    </div>
+    <div class="card">
+      <h3>Beyond BSM</h3>
+      <p>Advanced desks employ Stochastic Volatility models (Heston, SABR) for the volatility smile,
+      and Monte Carlo simulation for path-dependent structures closed-form solutions can't reach.</p>
+    </div>
+    <div class="card warn-card">
+      <h3>Systemic Risk</h3>
+      <p>These strategies are vulnerable to "Liquidity Black Holes" — during a crash, hedging gaps
+      produce slippage that BSM's frictionless-market assumption cannot anticipate.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VERDICT ============ -->
+<section class="tab-panel" id="verdict">
+  <h2>Final Verdict: Evidence-Based Critique &amp; Recommendation</h2>
+
+  <div class="swot-grid">
+    <div class="swot s"><h3>Strengths</h3><p>Universal standardization, extreme computational efficiency,
+    and the creation of a common risk language — the Greeks.</p></div>
+    <div class="swot w"><h3>Weaknesses</h3><p>Failure to account for non-normal fat tails, assumption of
+    continuous liquidity, inability to natively price the volatility smile.</p></div>
+    <div class="swot o"><h3>Opportunities</h3><p>Pair BSM with stochastic-volatility models (Heston,
+    SABR) and Monte Carlo simulation to close the gap between theory and market reality.</p></div>
+    <div class="swot t"><h3>Threats</h3><p>Liquidity black holes and gap risk during market stress can
+    invalidate the Delta-neutral hedge that the entire framework depends on.</p></div>
+  </div>
+
+  <div class="panel recommendation">
+    <h3>Professional Recommendation</h3>
+    <p>The BSM model is a mandatory starting point for any serious trading operation, but it is not a
+    "fire-and-forget" solution. Use it as a pricing benchmark while heavily adjusting for the volatility
+    smirk, and supplement it with rigorous stress testing for non-normal distributions.</p>
+    <p class="pull-quote">"In modern, high-frequency, non-normal markets, the BSM model is your compass —
+    but it is not the map. Use it to navigate, but never mistake the model for the reality of the market."</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>BSM Quant Desk — a self-contained reference &amp; calculator for the Black-Scholes-Merton framework.
+  All computation runs client-side in JavaScript; no data leaves the browser.</p>
+</footer>
+
+<script src="js/bsm.js"></script>
+</body>
+</html>
